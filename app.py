@@ -310,111 +310,215 @@ tab_about, tab_data, tab_results, tab_linearized = st.tabs([
 with tab_about:
 
     st.subheader("About this tool")
+    st.markdown("""
+                This web application provides nonlinear fitting of experimental adsorption data to common isotherm models 
+                used in environmental, chemical, and materials science research.
+    """)
+    st.markdown("**Implemented models**")
+
+    models_info = [
+        {
+            "name": "Henry",
+            "equation": "qe = KH·Ce",
+            "application": "Dilute solutions, linear range",
+            "description": """
+    **Henry's Law** assumes adsorption is proportional to concentration — the simplest possible model.
+    Valid only at very low concentrations where the surface is far from saturated.
+
+    - **KH**: Henry constant (slope of the linear relationship)
+    - Best used as a baseline or for initial screening
+    - Fails at higher concentrations where surface sites become limited
+            """
+        },
+        {
+            "name": "Langmuir",
+            "equation": "qe = (qmax·KL·Ce)/(1+KL·Ce)",
+            "application": "Monolayer, homogeneous surface",
+            "description": """
+    **Langmuir** assumes a finite number of identical, equivalent adsorption sites.
+    Once all sites are filled (qmax), no more adsorption occurs — classic monolayer model.
+
+    - **qmax**: Maximum adsorption capacity (mg/g)
+    - **KL**: Langmuir affinity constant (L/mg) — higher = stronger binding
+    - Assumes no interaction between adsorbed molecules
+    - Most widely used model in literature
+            """
+        },
+        {
+            "name": "Freundlich",
+            "equation": "qe = KF·Ce^(1/n)",
+            "application": "Heterogeneous surface",
+            "description": """
+    **Freundlich** is an empirical model for heterogeneous surfaces with non-uniform energy sites.
+    Unlike Langmuir, it has no saturation plateau — adsorption keeps increasing with concentration.
+
+    - **KF**: Adsorption capacity constant
+    - **n**: Heterogeneity factor — if n > 1, adsorption is favorable; n = 1 → linear (Henry)
+    - 1/n (slope of ln-ln plot) indicates adsorption intensity
+            """
+        },
+        {
+            "name": "Temkin",
+            "equation": "qe = B·ln(A·Ce)",
+            "application": "Adsorbate–adsorbent interactions",
+            "description": """
+    **Temkin** accounts for adsorbate–adsorbent interactions by assuming adsorption heat
+    decreases linearly with surface coverage (rather than being constant as in Langmuir).
+
+    - **A**: Temkin equilibrium binding constant (L/g)
+    - **B**: Constant related to the heat of adsorption (J/mol)
+    - Useful for chemisorption systems where surface interactions matter
+            """
+        },
+        {
+            "name": "BET",
+            "equation": "multilayer formula",
+            "application": "Multilayer adsorption",
+            "description": """
+    **Brunauer–Emmett–Teller (BET)** extends Langmuir to allow multiple adsorption layers.
+    Each layer acts as a new surface for the next, leading to much higher capacities.
+
+    - **qm**: Monolayer capacity
+    - **C**: BET energy constant (related to first-layer adsorption energy)
+    - **Cs**: Saturation concentration — x = Ce/Cs must be < 1
+    - Standard model for gas-phase surface area measurements (N₂ adsorption)
+            """
+        },
+        {
+            "name": "Dubinin–Radushkevich",
+            "equation": "qe = qs·exp(−K·ε²)",
+            "application": "Pore-filling mechanism",
+            "description": """
+    **Dubinin–Radushkevich (D-R)** describes adsorption into micropores via a pore-filling mechanism.
+    Uses the Polanyi adsorption potential ε = ln(1 + 1/Ce).
+
+    - **qs**: Theoretical saturation capacity
+    - **K**: Constant related to mean free energy of adsorption
+    - Mean adsorption energy E = 1/√(2K) — if E < 8 kJ/mol → physisorption; E > 8 → chemisorption
+            """
+        },
+        {
+            "name": "Redlich–Peterson",
+            "equation": "qe = KR·Ce/(1+aR·Ce^g)",
+            "application": "Hybrid L–F model",
+            "description": """
+    **Redlich–Peterson** is a three-parameter hybrid that combines features of Langmuir and Freundlich.
+    The exponent g (0–1) controls which model it approaches.
+
+    - **KR, aR**: Redlich–Peterson constants
+    - **g**: Exponent — g = 1 → reduces to Langmuir; aR → 0 → reduces to Henry
+    - More flexible than 2-parameter models, useful when neither L nor F fits well
+    - Requires more data points to avoid overfitting
+            """
+        },
+    ]
+
+    # Table header
+    header_cols = st.columns([1.2, 1.8, 2, 0.6])
+    header_cols[0].markdown("**Model**")
+    header_cols[1].markdown("**Equation**")
+    header_cols[2].markdown("**Application**")
+    header_cols[3].markdown("**Info**")
+    st.divider()
+
+    for m in models_info:
+        cols = st.columns([1.2, 1.8, 2, 0.6])
+        cols[0].markdown(m["name"])
+        cols[1].markdown(f"`{m['equation']}`")
+        cols[2].markdown(m["application"])
+        with cols[3].popover("💬"):
+            st.markdown(f"### {m['name']}")
+            st.markdown(m["description"])
+        st.divider()
 
     st.markdown("""
-    This web application provides nonlinear fitting of experimental
-    adsorption data to common isotherm models used in environmental,
-    chemical, and materials science research.
 
-    **Implemented models**
+        **Fitting method**
 
-    | Model | Equation | Application |
-    |-------|----------|-------------|
-    | Henry | qe = KH·Ce | Dilute solutions, linear range |
-    | Langmuir | qe = (qmax·KL·Ce)/(1+KL·Ce) | Monolayer, homogeneous surface |
-    | Freundlich | qe = KF·Ce^(1/n) | Heterogeneous surface |
-    | Temkin | qe = B·ln(A·Ce) | Adsorbate–adsorbent interactions |
-    | BET | multilayer formula | Multilayer adsorption |
-    | Dubinin–Radushkevich | qe = qs·exp(−K·ε²) | Pore-filling mechanism |
-    | Redlich–Peterson | qe = KR·Ce/(1+aR·Ce^g) | Hybrid L–F model |
+        Nonlinear least squares using `scipy.optimize.curve_fit`.
+        Parameters are reported with 95% confidence intervals derived
+        from the covariance matrix (Jacobian propagation).
 
-    **Fitting method**
+        **Data format**
 
-    Nonlinear least squares using `scipy.optimize.curve_fit`.
-    Parameters are reported with 95% confidence intervals derived
-    from the covariance matrix (Jacobian propagation).
+        CSV file with two columns: `Ce` (equilibrium concentration)
+        and `qe` (amount adsorbed). European decimal format (comma
+        as decimal separator) is automatically detected and converted.
 
-    **Data format**
+        **Version history**
 
-    CSV file with two columns: `Ce` (equilibrium concentration)
-    and `qe` (amount adsorbed). European decimal format (comma
-    as decimal separator) is automatically detected and converted.
+        - v6: BET registered, Temkin/BET log-zero guards, confidence
+        intervals, linearized forms, unit labels, data validation.
+        - v5: Original interactive CLI version.
 
-    **Version history**
-
-    - v6: BET registered, Temkin/BET log-zero guards, confidence
-      intervals, linearized forms, unit labels, data validation.
-    - v5: Original interactive CLI version.
-
-    **License:** MIT — free to use, modify, and distribute.
-    """)
+        **License:** MIT — free to use, modify, and distribute.
+        """)
 
     st.divider()
     st.subheader("Quick start guide")
 
     with st.expander("How do I prepare my CSV file?"):
-        st.markdown("""
-        Your CSV needs two columns in this order:
+            st.markdown("""
+            Your CSV needs two columns in this order:
 
-        ```
-        Ce,qe
-        0.10,0.90
-        0.50,3.20
-        1.00,4.80
-        2.00,6.50
-        5.00,8.20
-        10.00,9.00
-        20.00,9.50
-        ```
+            ```
+            Ce,qe
+            0.10,0.90
+            0.50,3.20
+            1.00,4.80
+            2.00,6.50
+            5.00,8.20
+            10.00,9.00
+            20.00,9.50
+            ```
 
-        - Column names can be anything — only column order matters.
-        - Minimum **3 data points** are required (more = better fits).
-        - Empty cells and rows with zero values are automatically removed.
-        - European format (e.g. `3,14` for 3.14) is supported.
-        """)
+            - Column names can be anything — only column order matters.
+            - Minimum **3 data points** are required (more = better fits).
+            - Empty cells and rows with zero values are automatically removed.
+            - European format (e.g. `3,14` for 3.14) is supported.
+            """)
 
     with st.expander("What does R² mean?"):
-        st.markdown("""
-        **R² (coefficient of determination)** measures how well the
-        model fits your data. It ranges from 0 to 1:
+            st.markdown("""
+            **R² (coefficient of determination)** measures how well the
+            model fits your data. It ranges from 0 to 1:
 
-        - R² = 1.0 → perfect fit
-        - R² > 0.99 → excellent fit (publication-ready)
-        - R² > 0.95 → good fit
-        - R² < 0.90 → model may not be appropriate
+            - R² = 1.0 → perfect fit
+            - R² > 0.99 → excellent fit (publication-ready)
+            - R² > 0.95 → good fit
+            - R² < 0.90 → model may not be appropriate
 
-        Use the **RMSE** (root mean square error) alongside R² — a low
-        RMSE means the average prediction error is small in absolute terms.
-        """)
+            Use the **RMSE** (root mean square error) alongside R² — a low
+            RMSE means the average prediction error is small in absolute terms.
+            """)
 
     with st.expander("What does the 95% confidence band mean?"):
-        st.markdown("""
-        The shaded area around the fitted curve represents the **95%
-        confidence interval** for the model prediction at each Ce value.
+            st.markdown("""
+            The shaded area around the fitted curve represents the **95%
+            confidence interval** for the model prediction at each Ce value.
 
-        It reflects the uncertainty in the fitted parameters. A narrow
-        band means the parameters are well-constrained by the data.
-        A wide band suggests you may need more data points, especially
-        at extreme concentration values.
-        """)
+            It reflects the uncertainty in the fitted parameters. A narrow
+            band means the parameters are well-constrained by the data.
+            A wide band suggests you may need more data points, especially
+            at extreme concentration values.
+            """)
 
     with st.expander("Should I use linearized or nonlinear fitting?"):
-        st.markdown("""
-        **Always prefer the nonlinear fitting** (Results tab) for
-        parameter estimation. It minimizes the true least-squares
-        criterion on the original data.
+            st.markdown("""
+            **Always prefer the nonlinear fitting** (Results tab) for
+            parameter estimation. It minimizes the true least-squares
+            criterion on the original data.
 
-        Linearization (e.g., Ce/qe vs Ce for Langmuir) was historically
-        used because it turned a nonlinear problem into a simple ruler-
-        and-graph problem. However, it distorts the error structure:
-        errors that are uniform in qe become non-uniform after the
-        transformation. This leads to biased parameter estimates.
+            Linearization (e.g., Ce/qe vs Ce for Langmuir) was historically
+            used because it turned a nonlinear problem into a simple ruler-
+            and-graph problem. However, it distorts the error structure:
+            errors that are uniform in qe become non-uniform after the
+            transformation. This leads to biased parameter estimates.
 
-        The Linearized Forms tab is included for:
-        - Cross-checking with older published literature
-        - Visual verification that your data follows a particular model
-        """)
-
+            The Linearized Forms tab is included for:
+            - Cross-checking with older published literature
+            - Visual verification that your data follows a particular model
+            """)
 
 # ═════════════════════════════════════════════════════════════════════
 #  TAB 1 — DATA INPUT
@@ -563,134 +667,136 @@ with tab_results:
     # Check if data was loaded in Tab 1
     if not st.session_state.get('ready', False):
         st.info("👈 Please load your data in the **Data Input** tab first.")
-        st.stop()   # st.stop() stops rendering the rest of this tab
+    
+    else:  # ✅ Wrap the rest of the tab content in an else block
+            
 
-    Ce_exp = st.session_state['Ce_exp']
-    qe_exp = st.session_state['qe_exp']
+        Ce_exp = st.session_state['Ce_exp']
+        qe_exp = st.session_state['qe_exp']
 
-    if not selected_models:
-        st.warning("Select at least one model in the sidebar.")
-        st.stop()
+        if not selected_models:
+            st.warning("Select at least one model in the sidebar.")
+            st.stop()
 
-    # ── Run fitting ───────────────────────────────────────────────
-    # st.spinner shows a loading animation while fitting runs
-    with st.spinner("Fitting models…"):
-        model = AdsorptionIsotherms()
-        all_results = {}
-        errors = {}
+        # ── Run fitting ───────────────────────────────────────────────
+        # st.spinner shows a loading animation while fitting runs
+        with st.spinner("Fitting models…"):
+            model = AdsorptionIsotherms()
+            all_results = {}
+            errors = {}
 
-        for mname in selected_models:
-            try:
-                # We cast to tuple so @st.cache_data can hash the arrays
-                res = cached_fit(model, mname,
-                                  tuple(Ce_exp), tuple(qe_exp))
-                all_results[mname] = res
-            except Exception as e:
-                errors[mname] = str(e)
+            for mname in selected_models:
+                try:
+                    # We cast to tuple so @st.cache_data can hash the arrays
+                    res = cached_fit(model, mname,
+                                    tuple(Ce_exp), tuple(qe_exp))
+                    all_results[mname] = res
+                except Exception as e:
+                    errors[mname] = str(e)
 
-    # Show any fitting failures
-    for mname, err in errors.items():
-        st.warning(f"**{mname}** could not be fitted: {err}")
+        # Show any fitting failures
+        for mname, err in errors.items():
+            st.warning(f"**{mname}** could not be fitted: {err}")
 
-    if not all_results:
-        st.error("No models could be fitted. Check your data.")
-        st.stop()
+        if not all_results:
+            st.error("No models could be fitted. Check your data.")
+            st.stop()
 
-    # Sort by R² descending
-    all_results = dict(
-        sorted(all_results.items(), key=lambda x: x[1]['r_squared'], reverse=True)
-    )
-    best_model = list(all_results.keys())[0]
+        # Sort by R² descending
+        all_results = dict(
+            sorted(all_results.items(), key=lambda x: x[1]['r_squared'], reverse=True)
+        )
+        best_model = list(all_results.keys())[0]
 
-    # ── Summary metrics ───────────────────────────────────────────
-    # st.columns splits the page into side-by-side columns
-    col1, col2, col3 = st.columns(3)
-    best_res = all_results[best_model]
-    col1.metric("Best model",  best_model.replace('_', ' ').title())
-    col2.metric("R²",          f"{best_res['r_squared']:.5f}")
-    col3.metric("RMSE",        f"{best_res['rmse']:.5f}")
+        # ── Summary metrics ───────────────────────────────────────────
+        # st.columns splits the page into side-by-side columns
+        col1, col2, col3 = st.columns(3)
+        best_res = all_results[best_model]
+        col1.metric("Best model",  best_model.replace('_', ' ').title())
+        col2.metric("R²",          f"{best_res['r_squared']:.5f}")
+        col3.metric("RMSE",        f"{best_res['rmse']:.5f}")
 
-    st.divider()
+        st.divider()
 
-    # ── Model selector for individual plot ────────────────────────
-    st.subheader("Isotherm plot")
+        # ── Model selector for individual plot ────────────────────────
+        st.subheader("Isotherm plot")
 
-    # st.selectbox is a dropdown; default to best model
-    model_to_plot = st.selectbox(
-        "Select model to plot",
-        options=list(all_results.keys()),
-        index=0,
-        format_func=lambda x: x.replace('_', ' ').title()
-    )
+        # st.selectbox is a dropdown; default to best model
+        model_to_plot = st.selectbox(
+            "Select model to plot",
+            options=list(all_results.keys()),
+            index=0,
+            format_func=lambda x: x.replace('_', ' ').title()
+        )
 
-    fig = build_plotly_figure(
-        model_to_plot, Ce_exp, qe_exp,
-        all_results[model_to_plot],
-        Ce_unit, qe_unit, show_ci
-    )
-    # st.plotly_chart renders an interactive Plotly figure
-    st.plotly_chart(fig, use_container_width=True)
+        fig = build_plotly_figure(
+            model_to_plot, Ce_exp, qe_exp,
+            all_results[model_to_plot],
+            Ce_unit, qe_unit, show_ci
+        )
+        # st.plotly_chart renders an interactive Plotly figure
+        st.plotly_chart(fig, use_container_width=True)
 
-    # ── Parameter table ───────────────────────────────────────────
-    st.subheader("Fitted parameters")
+        # ── Parameter table ───────────────────────────────────────────
+        st.subheader("Fitted parameters")
 
-    selected_res = all_results[model_to_plot]
-    param_rows = []
-    for pname, pval in selected_res['parameters'].items():
-        ci = selected_res['confidence_95'].get(pname, np.nan)
-        param_rows.append({
-            'Parameter': pname,
-            'Value': round(pval, 6),
-            '± 95% CI': round(ci, 6)
-        })
-    st.dataframe(pd.DataFrame(param_rows), use_container_width=True,
-                 hide_index=True)
+        selected_res = all_results[model_to_plot]
+        param_rows = []
+        for pname, pval in selected_res['parameters'].items():
+            ci = selected_res['confidence_95'].get(pname, np.nan)
+            param_rows.append({
+                'Parameter': pname,
+                'Value': round(pval, 6),
+                '± 95% CI': round(ci, 6)
+            })
+        st.dataframe(pd.DataFrame(param_rows), use_container_width=True,
+                    hide_index=True)
 
-    st.divider()
+        st.divider()
 
-    # ── Full model comparison table ───────────────────────────────
-    st.subheader("Model comparison")
-    comparison_df = results_to_dataframe(all_results)
+        # ── Full model comparison table ───────────────────────────────
+        st.subheader("Model comparison")
+        comparison_df = results_to_dataframe(all_results)
 
-    # Highlight the best model row
-    # st.dataframe with column_config lets us customise column display
-    st.dataframe(
-        comparison_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            'R²': st.column_config.ProgressColumn(
-                'R²', min_value=0, max_value=1, format="%.5f"
+        # Highlight the best model row
+        # st.dataframe with column_config lets us customise column display
+        st.dataframe(
+            comparison_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                'R²': st.column_config.ProgressColumn(
+                    'R²', min_value=0, max_value=1, format="%.5f"
+                )
+            }
+        )
+
+        # ── Downloads ─────────────────────────────────────────────────
+        st.divider()
+        st.subheader("Export results")
+
+        dl_col1, dl_col2 = st.columns(2)
+
+        with dl_col1:
+            csv_report = generate_report_csv(
+                Ce_exp, qe_exp, all_results, Ce_unit, qe_unit
             )
-        }
-    )
+            st.download_button(
+                label="⬇ Download full report (CSV)",
+                data=csv_report,
+                file_name="isotherm_results.csv",
+                mime="text/csv"
+            )
 
-    # ── Downloads ─────────────────────────────────────────────────
-    st.divider()
-    st.subheader("Export results")
-
-    dl_col1, dl_col2 = st.columns(2)
-
-    with dl_col1:
-        csv_report = generate_report_csv(
-            Ce_exp, qe_exp, all_results, Ce_unit, qe_unit
-        )
-        st.download_button(
-            label="⬇ Download full report (CSV)",
-            data=csv_report,
-            file_name="isotherm_results.csv",
-            mime="text/csv"
-        )
-
-    with dl_col2:
-        # Export just the comparison table
-        csv_table = comparison_df.to_csv(index=False)
-        st.download_button(
-            label="⬇ Download comparison table (CSV)",
-            data=csv_table,
-            file_name="model_comparison.csv",
-            mime="text/csv"
-        )
+        with dl_col2:
+            # Export just the comparison table
+            csv_table = comparison_df.to_csv(index=False)
+            st.download_button(
+                label="⬇ Download comparison table (CSV)",
+                data=csv_table,
+                file_name="model_comparison.csv",
+                mime="text/csv"
+            )
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -702,105 +808,105 @@ with tab_linearized:
     # Check if data was loaded in Tab 1
     if not st.session_state.get('ready', False):
         st.info("👈 Please load your data in the **Data Input** tab first.")
-        st.stop()   # st.stop() stops rendering the rest of this tab
+    else:    
 
-    Ce_exp = st.session_state['Ce_exp']
-    qe_exp = st.session_state['qe_exp']
+        Ce_exp = st.session_state['Ce_exp']
+        qe_exp = st.session_state['qe_exp']
 
-    st.subheader("Linearized isotherm forms")
-    st.markdown("""
-    Many classical studies use **linearized** forms of isotherm equations
-    to estimate parameters graphically. These are provided for comparison
-    with the nonlinear fitting in the Results tab.
+        st.subheader("Linearized isotherm forms")
+        st.markdown("""
+        Many classical studies use **linearized** forms of isotherm equations
+        to estimate parameters graphically. These are provided for comparison
+        with the nonlinear fitting in the Results tab.
 
-    > **Note:** Nonlinear fitting (Results tab) is statistically more
-    > rigorous. Linearization distorts the error structure. These plots
-    > are here for reference and cross-checking with published literature.
-    """)
+        > **Note:** Nonlinear fitting (Results tab) is statistically more
+        > rigorous. Linearization distorts the error structure. These plots
+        > are here for reference and cross-checking with published literature.
+        """)
 
-    lin_col1, lin_col2 = st.columns(2)
+        lin_col1, lin_col2 = st.columns(2)
 
-    model_obj = AdsorptionIsotherms()
+        model_obj = AdsorptionIsotherms()
 
-    # ── Langmuir linearization ────────────────────────────────────
-    with lin_col1:
-        st.markdown("**Langmuir: Ce/qe vs Ce**")
-        try:
-            lang_lin = model_obj.linearize_langmuir(Ce_exp, qe_exp)
+        # ── Langmuir linearization ────────────────────────────────────
+        with lin_col1:
+            st.markdown("**Langmuir: Ce/qe vs Ce**")
+            try:
+                lang_lin = model_obj.linearize_langmuir(Ce_exp, qe_exp)
 
-            x_fit = np.linspace(Ce_exp.min(), Ce_exp.max(), 100)
-            y_fit = lang_lin['slope'] * x_fit + lang_lin['intercept']
+                x_fit = np.linspace(Ce_exp.min(), Ce_exp.max(), 100)
+                y_fit = lang_lin['slope'] * x_fit + lang_lin['intercept']
 
-            fig_lang = go.Figure()
-            fig_lang.add_trace(go.Scatter(
-                x=lang_lin['x'], y=lang_lin['y'],
-                mode='markers',
-                marker=dict(color='#d62728', size=10),
-                name='Data'
-            ))
-            fig_lang.add_trace(go.Scatter(
-                x=x_fit, y=y_fit,
-                mode='lines',
-                line=dict(color='#1f77b4', width=2),
-                name='Linear fit'
-            ))
-            fig_lang.update_layout(
-                xaxis_title=f"Ce ({Ce_unit})",
-                yaxis_title=f"Ce/qe ({Ce_unit}/{qe_unit})",
-                plot_bgcolor='white',
-                paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(t=10)
-            )
-            st.plotly_chart(fig_lang, use_container_width=True)
+                fig_lang = go.Figure()
+                fig_lang.add_trace(go.Scatter(
+                    x=lang_lin['x'], y=lang_lin['y'],
+                    mode='markers',
+                    marker=dict(color='#d62728', size=10),
+                    name='Data'
+                ))
+                fig_lang.add_trace(go.Scatter(
+                    x=x_fit, y=y_fit,
+                    mode='lines',
+                    line=dict(color='#1f77b4', width=2),
+                    name='Linear fit'
+                ))
+                fig_lang.update_layout(
+                    xaxis_title=f"Ce ({Ce_unit})",
+                    yaxis_title=f"Ce/qe ({Ce_unit}/{qe_unit})",
+                    plot_bgcolor='white',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(t=10)
+                )
+                st.plotly_chart(fig_lang, use_container_width=True)
 
-            st.markdown(f"""
-            | Parameter | Linearized | Nonlinear (for reference) |
-            |-----------|-----------|--------------------------|
-            | qmax      | {lang_lin['qmax']:.4f} {qe_unit} | — |
-            | KL        | {lang_lin['KL']:.4f} L/{Ce_unit} | — |
-            """)
-        except Exception as e:
-            st.error(f"Langmuir linearization failed: {e}")
+                st.markdown(f"""
+                | Parameter | Linearized | Nonlinear (for reference) |
+                |-----------|-----------|--------------------------|
+                | qmax      | {lang_lin['qmax']:.4f} {qe_unit} | — |
+                | KL        | {lang_lin['KL']:.4f} L/{Ce_unit} | — |
+                """)
+            except Exception as e:
+                st.error(f"Langmuir linearization failed: {e}")
 
-    # ── Freundlich linearization ──────────────────────────────────
-    with lin_col2:
-        st.markdown("**Freundlich: ln(qe) vs ln(Ce)**")
-        try:
-            frnd_lin = model_obj.linearize_freundlich(Ce_exp, qe_exp)
+        # ── Freundlich linearization ──────────────────────────────────
+        with lin_col2:
+            st.markdown("**Freundlich: ln(qe) vs ln(Ce)**")
+            try:
+                frnd_lin = model_obj.linearize_freundlich(Ce_exp, qe_exp)
 
-            x_fit = np.linspace(frnd_lin['x'].min(), frnd_lin['x'].max(), 100)
-            y_fit = frnd_lin['slope'] * x_fit + frnd_lin['intercept']
+                x_fit = np.linspace(frnd_lin['x'].min(), frnd_lin['x'].max(), 100)
+                y_fit = frnd_lin['slope'] * x_fit + frnd_lin['intercept']
 
-            fig_frnd = go.Figure()
-            fig_frnd.add_trace(go.Scatter(
-                x=frnd_lin['x'], y=frnd_lin['y'],
-                mode='markers',
-                marker=dict(color='#d62728', size=10),
-                name='Data'
-            ))
-            fig_frnd.add_trace(go.Scatter(
-                x=x_fit, y=y_fit,
-                mode='lines',
-                line=dict(color='#2ca02c', width=2),
-                name='Linear fit'
-            ))
-            fig_frnd.update_layout(
-                xaxis_title=f"ln(Ce)",
-                yaxis_title=f"ln(qe)",
-                plot_bgcolor='white',
-                paper_bgcolor='rgba(0,0,0,0)',
-                margin=dict(t=10)
-            )
-            st.plotly_chart(fig_frnd, use_container_width=True)
+                fig_frnd = go.Figure()
+                fig_frnd.add_trace(go.Scatter(
+                    x=frnd_lin['x'], y=frnd_lin['y'],
+                    mode='markers',
+                    marker=dict(color='#d62728', size=10),
+                    name='Data'
+                ))
+                fig_frnd.add_trace(go.Scatter(
+                    x=x_fit, y=y_fit,
+                    mode='lines',
+                    line=dict(color='#2ca02c', width=2),
+                    name='Linear fit'
+                ))
+                fig_frnd.update_layout(
+                    xaxis_title=f"ln(Ce)",
+                    yaxis_title=f"ln(qe)",
+                    plot_bgcolor='white',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(t=10)
+                )
+                st.plotly_chart(fig_frnd, use_container_width=True)
 
-            st.markdown(f"""
-            | Parameter | Linearized | Description |
-            |-----------|-----------|-------------|
-            | KF        | {frnd_lin['KF']:.4f} | Freundlich constant |
-            | n         | {frnd_lin['n']:.4f}  | Heterogeneity factor |
-            | 1/n (slope) | {frnd_lin['slope']:.4f} | Adsorption intensity |
-            """)
-        except Exception as e:
-            st.error(f"Freundlich linearization failed: {e}")
+                st.markdown(f"""
+                | Parameter | Linearized | Description |
+                |-----------|-----------|-------------|
+                | KF        | {frnd_lin['KF']:.4f} | Freundlich constant |
+                | n         | {frnd_lin['n']:.4f}  | Heterogeneity factor |
+                | 1/n (slope) | {frnd_lin['slope']:.4f} | Adsorption intensity |
+                """)
+            except Exception as e:
+                st.error(f"Freundlich linearization failed: {e}")
 
 
