@@ -1311,6 +1311,7 @@ def page_equilibrium():
 # ═════════════════════════════════════════════════════════════════════
 
 def page_kinetics():
+    show_ci_kin = True
     with st.sidebar:
         if st.button("← Back to Home"):
             st.session_state['page'] = 'home'
@@ -1328,6 +1329,11 @@ def page_kinetics():
         alpha = st.select_slider("Significance level α", options=[0.01, 0.05, 0.10],
                                  value=0.05)
         st.divider()
+        if system_type == "Batch (discontinuous)":
+            st.subheader("Plot options")
+            show_ci_kin = st.toggle("Show 95% confidence band", value=True, key="kin_rxn_show_ci")
+            st.caption("Applied to batch reaction model comparison plot.")
+            st.divider()
         st.markdown("**About**\n\nFits kinetic adsorption data using scipy BDF/TRF solvers.")
 
     st.title("Adsorption Kinetics Fitting")
@@ -1337,7 +1343,7 @@ def page_kinetics():
     )
 
     if system_type == "Batch (discontinuous)":
-        _kinetics_batch(alpha)
+        _kinetics_batch(alpha, show_ci_kin)
     else:
         _kinetics_fixedbed(alpha)
 
@@ -1346,7 +1352,7 @@ def page_kinetics():
 #  BATCH KINETICS
 # ─────────────────────────────────────────────────────────────────────
 
-def _kinetics_batch(alpha):
+def _kinetics_batch(alpha, show_ci_kin=True):
     tab_about, tab_data, tab_reaction, tab_diffusion = st.tabs([
         "ℹ️ About", "📂 Data Input",
         "⚗️ Reaction Models", "🧬 Diffusion Models (PVSDM)"
@@ -1483,45 +1489,159 @@ Time in minutes, qt in mg/g, C_bulk in mg/L.
                 st.error("No models converged. Check your data.")
                 st.stop()
 
-            # Metrics summary
-            cols = st.columns(len(results))
-            for i, (name, res) in enumerate(results.items()):
-                with cols[i]:
-                    st.metric(f"{name} — R²", f"{res['r_squared']:.4f}")
+            # Best model summary (AIC is primary criterion for model selection)
+            best_model = min(results.items(), key=lambda x: x[1].get('aic', np.inf))[0]
+            best_res = results[best_model]
+
+            bc1, bc2, bc3 = st.columns(3)
+            bc1.metric("Best model (AIC)", best_model)
+            bc2.metric("R²", f"{best_res['r_squared']:.5f}")
+            bc3.metric("RMSE", f"{best_res['rmse']:.5f}")
 
             st.divider()
+            st.subheader("Comparison Plot")
 
-            # Select model to plot
-            model_sel = st.selectbox("Select model to inspect",
-                                     list(results.keys()))
-            sel_res = results[model_sel]
+            # ── Multi-model overlay selection ─────────────────────────
+            model_names_list = list(results.keys())
+            for mname in model_names_list:
+                st.session_state.setdefault(f"kin_rxn_cb_{mname}", True)
+            st.session_state.setdefault("kin_rxn_select_all", True)
 
-            # Plot
+            def _sync_kin_select_all():
+                state = st.session_state.get("kin_rxn_select_all", False)
+                for name in model_names_list:
+                    st.session_state[f"kin_rxn_cb_{name}"] = state
+
+            def _sync_kin_individual():
+                st.session_state["kin_rxn_select_all"] = all(
+                    st.session_state.get(f"kin_rxn_cb_{name}", False)
+                    for name in model_names_list
+                ) if model_names_list else False
+
+            sel_col1, sel_col2 = st.columns([1, 3])
+            with sel_col1:
+                st.checkbox("Select all", key="kin_rxn_select_all", on_change=_sync_kin_select_all)
+
+            cb_cols = st.columns(min(len(model_names_list), 3))
+            models_to_plot = []
+            for idx, mname in enumerate(model_names_list):
+                with cb_cols[idx % len(cb_cols)]:
+                    checked = st.checkbox(
+                        mname,
+                        key=f"kin_rxn_cb_{mname}",
+                        on_change=_sync_kin_individual
+                    )
+                    if checked:
+                        models_to_plot.append(mname)
+
+            # Plot (all selected models)
             t_smooth = np.linspace(0, t_exp.max(), 400)
-            if model_sel == "PFO":
-                qt_smooth = bk.pfo_equation(t_smooth,
-                                             sel_res['parameters']['qe'],
-                                             sel_res['parameters']['k1'])
-            elif model_sel == "PSO":
-                qt_smooth = bk.pso_equation(t_smooth,
-                                             sel_res['parameters']['qe'],
-                                             sel_res['parameters']['k2'])
-            else:
-                qt_smooth = bk.elovich_equation(t_smooth,
-                                                 sel_res['parameters']['alpha'],
-                                                 sel_res['parameters']['beta'])
+            model_colors = {
+                "PFO": "#534AB7",
+                "PSO": "#1f77b4",
+                "Elovich": "#2ca02c",
+            }
 
             fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=t_smooth, y=qt_smooth, mode='lines',
-                line=dict(color='#534AB7', width=2.5), name=f'{model_sel} fit'
-            ))
             fig.add_trace(go.Scatter(
                 x=t_exp, y=qt_exp, mode='markers',
                 marker=dict(color='#d62728', size=10,
                             line=dict(color='white', width=1)),
                 name='Experimental'
             ))
+            ci_skipped_models = []
+
+            for mname in models_to_plot:
+                res = results[mname]
+                if mname == "PFO":
+                    qt_smooth = bk.pfo_equation(
+                        t_smooth,
+                        res['parameters']['qe'],
+                        res['parameters']['k1']
+                    )
+                elif mname == "PSO":
+                    qt_smooth = bk.pso_equation(
+                        t_smooth,
+                        res['parameters']['qe'],
+                        res['parameters']['k2']
+                    )
+                else:
+                    qt_smooth = bk.elovich_equation(
+                        t_smooth,
+                        res['parameters']['alpha'],
+                        res['parameters']['beta']
+                    )
+
+                fig.add_trace(go.Scatter(
+                    x=t_smooth,
+                    y=qt_smooth,
+                    mode='lines',
+                    line=dict(color=model_colors.get(mname, '#444444'), width=2.5),
+                    name=f"{mname} (R²={res['r_squared']:.4f})"
+                ))
+
+                if show_ci_kin and res.get('covariance') is not None:
+                    pcov = np.asarray(res['covariance'], dtype=float)
+                    pnames = list(res['parameters'].keys())
+                    pvals = np.array([res['parameters'][k] for k in pnames], dtype=float)
+
+                    cov_valid = (
+                        pcov.shape == (len(pvals), len(pvals))
+                        and np.all(np.isfinite(pcov))
+                    )
+                    if cov_valid:
+                        try:
+                            cond_pcov = np.linalg.cond(pcov)
+                            cov_valid = np.isfinite(cond_pcov) and cond_pcov < 1e12
+                        except np.linalg.LinAlgError:
+                            cov_valid = False
+
+                    if not cov_valid:
+                        ci_skipped_models.append(mname)
+                        continue
+
+                    if mname == "PFO":
+                        model_fn = bk.pfo_equation
+                    elif mname == "PSO":
+                        model_fn = bk.pso_equation
+                    else:
+                        model_fn = bk.elovich_equation
+
+                    eps = 1e-6 * np.abs(pvals) + 1e-12
+                    J = np.zeros((len(t_smooth), len(pvals)), dtype=float)
+                    for pi in range(len(pvals)):
+                        p_plus = pvals.copy(); p_plus[pi] += eps[pi]
+                        p_minus = pvals.copy(); p_minus[pi] -= eps[pi]
+                        y_plus = model_fn(t_smooth, *p_plus)
+                        y_minus = model_fn(t_smooth, *p_minus)
+                        J[:, pi] = (y_plus - y_minus) / (2.0 * eps[pi])
+
+                    var_pred = np.einsum('ij,jk,ik->i', J, pcov, J)
+                    std_pred = np.sqrt(np.maximum(var_pred, 0.0))
+                    ci_band = 1.96 * std_pred
+
+                    color_hex = model_colors.get(mname, '#444444').lstrip('#')
+                    r, g, b = tuple(int(color_hex[i:i+2], 16) for i in (0, 2, 4))
+                    fig.add_trace(go.Scatter(
+                        x=np.concatenate([t_smooth, t_smooth[::-1]]),
+                        y=np.concatenate([qt_smooth + ci_band, (qt_smooth - ci_band)[::-1]]),
+                        fill='toself',
+                        fillcolor=f'rgba({r},{g},{b},0.10)',
+                        line=dict(color='rgba(255,255,255,0)'),
+                        hoverinfo='skip',
+                        showlegend=False,
+                        name=f'{mname} 95% CI'
+                    ))
+
+            if not models_to_plot:
+                st.info("Select at least one model to display on the plot.")
+
+            if show_ci_kin and ci_skipped_models:
+                skipped = ", ".join(sorted(set(ci_skipped_models)))
+                st.caption(
+                    f"95% confidence band skipped for {skipped} due to unstable/invalid covariance matrix."
+                )
+
             fig.update_layout(
                 xaxis_title=f"Time ({t_unit})",
                 yaxis_title=f"qt ({q_unit})",
@@ -1534,6 +1654,11 @@ Time in minutes, qt in mg/g, C_bulk in mg/L.
                 yaxis=dict(showgrid=True, gridcolor='#f0f0f0'),
             )
             st.plotly_chart(fig, use_container_width=True)
+
+            # Select model to inspect
+            model_sel = st.selectbox("Select model to inspect",
+                                     list(results.keys()))
+            sel_res = results[model_sel]
 
             # Parameters table
             st.subheader("Fitted parameters")
