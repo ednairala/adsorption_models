@@ -309,53 +309,217 @@ def page_equilibrium():
 
     # ── About tab ─────────────────────────────────────────────────────
     with tab_about:
+
         st.subheader("About this tool")
-        st.markdown(
-            "Nonlinear fitting of adsorption equilibrium data to seven classical "
-            "isotherm models. Upload a CSV, choose your models, and download "
-            "publication-ready results."
-        )
+        st.markdown("""
+                    This web application provides nonlinear fitting of experimental adsorption data to common isotherm models 
+                    used in environmental, chemical, and materials science research.
+        """)
+        st.markdown("**Implemented models**")
 
         models_info = [
-            {"name": "Henry",     "equation": "qe = KH·Ce",
-             "application": "Dilute solutions, linear range"},
-            {"name": "Langmuir",  "equation": "qe = (qmax·KL·Ce)/(1+KL·Ce)",
-             "application": "Monolayer, homogeneous surface"},
-            {"name": "Freundlich","equation": "qe = KF·Ce^(1/n)",
-             "application": "Heterogeneous surface"},
-            {"name": "Temkin",    "equation": "qe = B·ln(A·Ce)",
-             "application": "Adsorbate–adsorbent interactions"},
-            {"name": "BET",       "equation": "multilayer formula",
-             "application": "Multilayer adsorption"},
-            {"name": "Dubinin–Radushkevich", "equation": "qe = qs·exp(−K·ε²)",
-             "application": "Pore-filling mechanism"},
-            {"name": "Redlich–Peterson",     "equation": "qe = KR·Ce/(1+aR·Ce^g)",
-             "application": "Hybrid Langmuir–Freundlich"},
+            {
+                "name": "Henry",
+                "equation": "qe = KH·Ce",
+                "application": "Dilute solutions, linear range",
+                "description": """
+        **Henry's Law** assumes adsorption is proportional to concentration — the simplest possible model.
+        Valid only at very low concentrations where the surface is far from saturated.
+
+        - **KH**: Henry constant (slope of the linear relationship)
+        - Best used as a baseline or for initial screening
+        - Fails at higher concentrations where surface sites become limited
+                """
+            },
+            {
+                "name": "Langmuir",
+                "equation": "qe = (qmax·KL·Ce)/(1+KL·Ce)",
+                "application": "Monolayer, homogeneous surface",
+                "description": """
+        **Langmuir** assumes a finite number of identical, equivalent adsorption sites.
+        Once all sites are filled (qmax), no more adsorption occurs — classic monolayer model.
+
+        - **qmax**: Maximum adsorption capacity (mg/g)
+        - **KL**: Langmuir affinity constant (L/mg) — higher = stronger binding
+        - Assumes no interaction between adsorbed molecules
+        - Most widely used model in literature
+                """
+            },
+            {
+                "name": "Freundlich",
+                "equation": "qe = KF·Ce^(1/n)",
+                "application": "Heterogeneous surface",
+                "description": """
+        **Freundlich** is an empirical model for heterogeneous surfaces with non-uniform energy sites.
+        Unlike Langmuir, it has no saturation plateau — adsorption keeps increasing with concentration.
+
+        - **KF**: Adsorption capacity constant
+        - **n**: Heterogeneity factor — if n > 1, adsorption is favorable; n = 1 → linear (Henry)
+        - 1/n (slope of ln-ln plot) indicates adsorption intensity
+                """
+            },
+            {
+                "name": "Temkin",
+                "equation": "qe = B·ln(A·Ce)",
+                "application": "Adsorbate–adsorbent interactions",
+                "description": """
+        **Temkin** accounts for adsorbate–adsorbent interactions by assuming adsorption heat
+        decreases linearly with surface coverage (rather than being constant as in Langmuir).
+
+        - **A**: Temkin equilibrium binding constant (L/g)
+        - **B**: Constant related to the heat of adsorption (J/mol)
+        - Useful for chemisorption systems where surface interactions matter
+                """
+            },
+            {
+                "name": "BET",
+                "equation": "multilayer formula",
+                "application": "Multilayer adsorption",
+                "description": """
+        **Brunauer–Emmett–Teller (BET)** extends Langmuir to allow multiple adsorption layers.
+        Each layer acts as a new surface for the next, leading to much higher capacities.
+
+        - **qm**: Monolayer capacity
+        - **C**: BET energy constant (related to first-layer adsorption energy)
+        - **Cs**: Saturation concentration — x = Ce/Cs must be < 1
+        - Standard model for gas-phase surface area measurements (N₂ adsorption)
+                """
+            },
+            {
+                "name": "Dubinin–Radushkevich",
+                "equation": "qe = qs·exp(−K·ε²)",
+                "application": "Pore-filling mechanism",
+                "description": """
+        **Dubinin–Radushkevich (D-R)** describes adsorption into micropores via a pore-filling mechanism.
+        Uses the Polanyi adsorption potential ε = ln(1 + 1/Ce).
+
+        - **qs**: Theoretical saturation capacity
+        - **K**: Constant related to mean free energy of adsorption
+        - Mean adsorption energy E = 1/√(2K) — if E < 8 kJ/mol → physisorption; E > 8 → chemisorption
+                """
+            },
+            {
+                "name": "Redlich–Peterson",
+                "equation": "qe = KR·Ce/(1+aR·Ce^g)",
+                "application": "Hybrid L–F model",
+                "description": """
+        **Redlich–Peterson** is a three-parameter hybrid that combines features of Langmuir and Freundlich.
+        The exponent g (0–1) controls which model it approaches.
+
+        - **KR, aR**: Redlich–Peterson constants
+        - **g**: Exponent — g = 1 → reduces to Langmuir; aR → 0 → reduces to Henry
+        - More flexible than 2-parameter models, useful when neither L nor F fits well
+        - Requires more data points to avoid overfitting
+                """
+            },
         ]
 
-        header_cols = st.columns([1.2, 1.8, 2])
+        # Table header
+        header_cols = st.columns([1.2, 1.8, 2, 0.6])
         header_cols[0].markdown("**Model**")
         header_cols[1].markdown("**Equation**")
         header_cols[2].markdown("**Application**")
+        header_cols[3].markdown("**Info**")
         st.divider()
+
         for m in models_info:
-            cols = st.columns([1.2, 1.8, 2])
+            cols = st.columns([1.2, 1.8, 2, 0.6])
             cols[0].markdown(m["name"])
             cols[1].markdown(f"`{m['equation']}`")
             cols[2].markdown(m["application"])
+            with cols[3].popover("💬"):
+                st.markdown(f"### {m['name']}")
+                st.markdown(m["description"])
             st.divider()
 
+        st.markdown("""
+
+            **Fitting method**
+
+            Nonlinear least squares using `scipy.optimize.curve_fit`.
+            Parameters are reported with 95% confidence intervals derived
+            from the covariance matrix (Jacobian propagation).
+
+            **Data format**
+
+            CSV file with two columns: `Ce` (equilibrium concentration)
+            and `qe` (amount adsorbed). European decimal format (comma
+            as decimal separator) is automatically detected and converted.
+
+            **Version history**
+
+            - v6: BET registered, Temkin/BET log-zero guards, confidence
+            intervals, linearized forms, unit labels, data validation.
+            - v5: Original interactive CLI version.
+
+            **License:** MIT — free to use, modify, and distribute.
+            """)
+
+        st.divider()
+        st.subheader("Quick start guide")
+
         with st.expander("How do I prepare my CSV file?"):
-            st.markdown("Two columns: `Ce` then `qe`. Header row optional. Min 3 points.")
+                st.markdown("""
+                Your CSV needs two columns in this order:
+
+                ```
+                Ce,qe
+                0.10,0.90
+                0.50,3.20
+                1.00,4.80
+                2.00,6.50
+                5.00,8.20
+                10.00,9.00
+                20.00,9.50
+                ```
+
+                - Column names can be anything — only column order matters.
+                - Minimum **3 data points** are required (more = better fits).
+                - Empty cells and rows with zero values are automatically removed.
+                - European format (e.g. `3,14` for 3.14) is supported.
+                """)
 
         with st.expander("What does R² mean?"):
-            st.markdown("R² = 1 → perfect fit. R² > 0.99 → excellent. R² < 0.90 → poor.")
+                st.markdown("""
+                **R² (coefficient of determination)** measures how well the
+                model fits your data. It ranges from 0 to 1:
+
+                - R² = 1.0 → perfect fit
+                - R² > 0.99 → excellent fit (publication-ready)
+                - R² > 0.95 → good fit
+                - R² < 0.90 → model may not be appropriate
+
+                Use the **RMSE** (root mean square error) alongside R² — a low
+                RMSE means the average prediction error is small in absolute terms.
+                """)
+
+        with st.expander("What does the 95% confidence band mean?"):
+                st.markdown("""
+                The shaded area around the fitted curve represents the **95%
+                confidence interval** for the model prediction at each Ce value.
+
+                It reflects the uncertainty in the fitted parameters. A narrow
+                band means the parameters are well-constrained by the data.
+                A wide band suggests you may need more data points, especially
+                at extreme concentration values.
+                """)
 
         with st.expander("Should I use linearized or nonlinear fitting?"):
-            st.markdown(
-                "Always prefer **nonlinear** fitting. Linearization distorts the "
-                "error structure and produces biased parameter estimates."
-            )
+                st.markdown("""
+                **Always prefer the nonlinear fitting** (Results tab) for
+                parameter estimation. It minimizes the true least-squares
+                criterion on the original data.
+
+                Linearization (e.g., Ce/qe vs Ce for Langmuir) was historically
+                used because it turned a nonlinear problem into a simple ruler-
+                and-graph problem. However, it distorts the error structure:
+                errors that are uniform in qe become non-uniform after the
+                transformation. This leads to biased parameter estimates.
+
+                The Linearized Forms tab is included for:
+                - Cross-checking with older published literature
+                - Visual verification that your data follows a particular model
+                """)
 
     # ── Data tab ──────────────────────────────────────────────────────
     with tab_data:
