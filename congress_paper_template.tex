@@ -1,0 +1,419 @@
+%!TEX TS-program = xelatex
+
+% Este material foi desenvolvido pela Comissão Organizadora da 16ª edição da COBEQ IC (COBEQ IC XVI).
+
+\documentclass[openany, a4paper, twoside]{article}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%      PACOTES BÁSICOS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[a4paper, top=3cm, bottom=2cm, left=2cm, right=2cm]{geometry}
+\usepackage[brazil]{babel}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{setspace}
+\usepackage{fontspec}           % Necessário para fontes TrueType/OpenType (LuaLaTeX)
+\usepackage[fontsize=10pt]{fontsize}
+\usepackage{adjustbox}
+\usepackage{amsmath}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%      FONTES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setmainfont{Arial}             % Fonte principal
+\newfontfamily{\arialnarrow}{ArialNarrow.ttf}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     FORMATAÇÃO DE TEXTO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[none]{hyphenat}     % Remove hifenização
+\clubpenalty=10000              % Evita órfãs
+\widowpenalty=10000             % Evita viúvas
+\displaywidowpenalty=10000
+\brokenpenalty=10000
+\predisplaypenalty=10000
+\postdisplaypenalty=10000
+
+\usepackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{1.5pt}
+\onehalfspacing                 % Espaçamento 1.5
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    SEÇÕES E TÍTULOS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{titlesec}
+
+\titleformat{\section}
+{\fontsize{12}{12}\bfseries}
+{\thesection.}{0.5em}{}
+
+\titleformat{\subsection}
+{\fontsize{11}{11}\bfseries}
+{\thesubsection.}{0.5em}{}
+
+\newcommand{\maintitle}{An Interactive Web-Based Platform for Integrated Adsorption Equilibrium and Kinetics Modeling}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     TABELAS E FIGURAS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{adjustbox}
+\usepackage{caption}
+
+\DeclareCaptionFont{tnr}{\fontspec{Arial}}
+\captionsetup{
+	font={tnr, normalsize},
+	labelfont=bf,
+	textfont=bf,
+	labelsep=endash,
+	skip=6pt
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     CORES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{xcolor}
+\definecolor{azulfeq}{RGB}{6, 91, 170}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     REFERÊNCIAS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{natbib}
+\renewcommand*{\bibfont}{\fontspec{Arial}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  LINKS E HYPERREF
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{hyperref}
+\hypersetup{
+	colorlinks=true,
+	linkcolor=black,
+	urlcolor=black,
+	citecolor=black
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%      TIKZ E CABEÇALHO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{tikzpagenodes}
+\usepackage{fancyhdr}
+\renewcommand{\headrulewidth}{0pt}
+
+\fancypagestyle{pageheader}{
+	\fancyhead{}
+	\fancyhead[L]{
+		\begin{tikzpicture}[remember picture, overlay]
+			\draw let
+			\p1 = ($(current page.north) - (current page header area.south)$),
+			\n1 = {veclen(\x1,\y1)}
+			in
+			node[inner sep=0, outer sep=0, below right]
+			at (current page.north west)
+			{\includegraphics[width=\paperwidth]{figuras/header}};
+		\end{tikzpicture}
+	}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%      DOCUMENTO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\pagestyle{pageheader}
+
+\begin{center}
+{\fontsize{14}{14}\selectfont \textbf{\maintitle}}
+\end{center}
+
+\begin{center}
+\fontsize{10}{10}\selectfont
+Edna Irala\textsuperscript{1}, Maria Magdalena Espinola\textsuperscript{1}, Jhabriel Varela\textsuperscript{1}
+\end{center}
+
+\begin{flushleft}
+\fontspec{Arial}
+\textsuperscript{1} {\fontsize{9}{9}\selectfont \textit{Universidad Politécnica Taiwán-Paraguay, UPTP, Asunción, Paraguay}}
+
+\vspace{12pt}
+
+\noindent{\fontsize{9}{9}\selectfont \textit{Autor correspondente: \href{mailto:edna.irala@uptp.edu.py}{edna.irala@uptp.edu.py}}}
+
+\end{flushleft}
+
+\section*{RESUMO}
+
+\noindent{\fontspec{Arial}\fontsize{10}{10}\selectfont
+
+A adsorção é um processo de separação fundamental em tratamento de água, remediação ambiental e aplicações industriais. O design e otimização de sistemas de adsorção dependem criticamente de modelos de isotermas de equilíbrio e modelos de cinética que descrevem o comportamento transiente. Apesar da ubiquidade desses modelos na literatura, pesquisadores e engenheiros enfrenta barreiras significativas: software comercial é caro, ferramentas de código aberto exigem expertise em programação, e os cálculos manuais são propensos a erros e difíceis de reproduzir. Este trabalho presenta uma plataforma web interativa de código aberto que unifica a análise de isotermas de equilíbrio e cinética de adsorção em lote e coluna fixa. A ferramenta implementa sete modelos clássicos de isotermas, oito modelos de cinética, estimativa automática de intervalos de confiança (95\%), ranking por Critério de Informação de Akaike, e geração de relatórios em PDF e scripts Python reproduzíveis. Validação em dados de exemplo demonstra que a plataforma fornece análises em minutos com rigor estatístico e comunicação clara de incerteza, reduzindo a barreira para modelagem rigorosa de adsorção em pesquisa e engenharia.
+
+\noindent \textit{Palavras-chave: adsorção; isotermas; cinética; modelagem; web-based tool; código aberto.}}
+
+\section{INTRODUÇÃO}
+
+A adsorção é um dos processos unitários mais amplamente aplicados em engenharia ambiental, tratamento de água e ciência de materiais. Seu design e otimização dependem criticamente de duas classes de modelos matemáticos: modelos de isotermas de equilíbrio, que descrevem a distribuição de um adsorbato entre as fases líquida e sólida em estado estacionário, e modelos cinéticos, que capturam o comportamento transiente de absorção em sistemas em lote ou fluxo contínuo. A estimativa precisa de parâmetros a partir de dados experimentais é, portanto, um pré-requisito para qualquer projeto rigoroso.
+
+Apesar dos muitos modelos publicados, pesquisadores e engenheiros em prática realizam rotineiramente este trabalho de ajuste manualmente, tornando seus projetos difíceis de reproduzir e propensos a erros de transcrição. Pacotes comerciais podem realizar regressão não-linear, mas exigem licenças custosas e conhecimento significativo de programação. Por outro lado, soluções puramente programáticas requerem familiaridade com computação científica, habilidade que alguns cientistas de domínio talvez não possuam.
+
+Uma lacuna prática existe, portanto, para uma plataforma integrada, amigável ao usuário e baseada na web que possa apoiar tanto equilíbrio quanto cinética sob um framework de análise consistente, preservando o rigor estatístico.
+
+Para abordar esta lacuna, este trabalho presenta a \textit{Adsorption Library}, uma ferramenta web interativa projetada para unificar o ajuste de modelos de adsorção, comparação de modelos, visualização e relatórios exportáveis. A contribuição deste trabalho é tríplice:
+
+\begin{itemize}
+	\item Integração de módulos de equilíbrio e cinética dentro de uma única interface.
+	\item Controles de análise interativa (filtragem de modelos, exibição de faixas de confiança, ranking baseado em critérios).
+	\item Saídas reproduzíveis (CSV, PDF e scripts Python auto-gerados) adequadas para relatórios científicos.
+\end{itemize}
+
+\section{METODOLOGIA}
+
+\subsection{Arquitetura do Sistema}
+
+A ferramenta proposta segue uma arquitetura modular com separação clara entre as camadas de interface e computação numérica. O frontend é implementado em Streamlit e fornece o fluxo de trabalho completo de interação do usuário, incluindo entrada de dados, configuração de parâmetros, seleção de modelos, visualização e opções de exportação. O backend implementa os modelos matemáticos, rotinas de ajuste não-linear, estimativa de incerteza e avaliação estatística. A arquitetura é organizada em:
+
+\begin{itemize}
+	\item \textbf{Camada de Frontend:} interface web interativa e orquestração de fluxo de trabalho.
+	\item \textbf{Camada de Modelos:} mecanismo de modelos de equilíbrio, cinética em lote e coluna fixa.
+	\item \textbf{Camada Estatística:} métricas de adequação e testes de significância.
+	\item \textbf{Camada de Relatórios:} geração de tabelas, gráficos, arquivos CSV, relatórios PDF e scripts Python reproduzíveis.
+\end{itemize}
+
+\subsection{Módulo de Análise de Equilíbrio}
+
+O módulo de equilíbrio ajusta dados experimentais $(C_e, q_e)$ através de estimativa não-linear de mínimos quadrados. Para cada modelo ajustado, o sistema calcula estimativas de parâmetros, intervalos de incerteza e indicadores de qualidade do ajuste. Sete modelos clássicos são implementados:
+
+\begin{equation}
+q_e = K \cdot C_e \quad \text{(Henry)}
+\label{eq:henry}
+\end{equation}
+
+\begin{equation}
+q_e = \frac{q_m \cdot b \cdot C_e}{1 + b \cdot C_e} \quad \text{(Langmuir)}
+\label{eq:langmuir}
+\end{equation}
+
+\begin{equation}
+q_e = K \cdot C_e^{1/n} \quad \text{(Freundlich)}
+\label{eq:freundlich}
+\end{equation}
+
+\begin{equation}
+q_e = \frac{RT}{b_T} \ln(K_T \cdot C_e) \quad \text{(Temkin)}
+\label{eq:temkin}
+\end{equation}
+
+Os modelos também incluem a isoterma BET para adsorção em múltiplas camadas, Dubinin-Radushkevich para adsorventes microporosos e Redlich-Peterson como forma híbrida flexível. O algoritmo de ajuste utiliza otimização de mínimos quadrados não-linear (Levenberg-Marquardt) para minimizar a soma dos quadrados dos resíduos. Uma vez obtidos os parâmetros ótimos, a plataforma calcula intervalos de confiança de 95\% usando estatísticas de Student baseadas na matriz de covariância. A saída inclui parâmetros ajustados com intervalos de confiança, métricas de regressão padrão e Critério de Informação de Akaike para ranking de modelos.
+
+\subsection{Módulo de Análise de Cinética em Lote}
+
+O módulo de cinética em lote implementa três modelos baseados em reação que descrevem comportamento de adsorção de pseudo-primeira-ordem e pseudo-segunda-ordem, bem como modelos avançados de difusão para transporte limitado por poro.
+
+\begin{equation}
+q_t = q_e (1 - e^{-k_1 t}) \quad \text{(Pseudo-Primeira-Ordem)}
+\label{eq:pfo}
+\end{equation}
+
+\begin{equation}
+q_t = \frac{k_2 \cdot q_e^2 \cdot t}{1 + k_2 \cdot q_e \cdot t} \quad \text{(Pseudo-Segunda-Ordem)}
+\label{eq:pso}
+\end{equation}
+
+Para adsorventes porosos em que a transferência de massa intrapartícula governa a taxa geral, a plataforma resolve três variantes via Método de Linhas com solver BDF (Backward Differentiation Formula): PVSDM (Pore Volume and Surface Diffusion), PVDM (Pore Volume Diffusion) e SDM (Surface Diffusion). Esses modelos contabilizam gradientes de concentração radial e/ou lineares dentro da partícula adsorvente e fornecem estimativas de coeficientes de difusão que caracterizam a textura do adsorvente.
+
+\subsection{Módulo de Cinética em Coluna Fixa}
+
+A plataforma oferece dois fluxos de trabalho para colunas de leito fixo: (1) ajuste de curva de ruptura para obter parâmetros cinéticos, e (2) cálculos de design para escalonamento de laboratório para escala de campo. Quatro modelos empíricos são implementados: Bohart-Adams, Thomas, Yoon-Nelson e Wolborska.
+
+A ferramenta fornece duas capacidades críticas de design: \textbf{Bed Depth Service Time (BDST)} prediz a altura de adsorvente necessária para alcançar um tempo de tratamento especificado, e \textbf{Length of Unused Bed (LUB)} estima a fração de adsorvente que permanece não utilizada no ponto de ruptura, quantificando a eficiência de utilização.
+
+\subsection{Avaliação Estatística e Ranking de Modelos}
+
+Todos os procedimentos de ajuste empregam um framework estatístico unificado para quantificar incerteza e permitir comparação objetiva de modelos. Os intervalos de confiança de parâmetros são calculados como:
+
+\begin{equation}
+\text{IC} = \text{parâmetro} \pm t_{\alpha/2, n-k} \cdot \sqrt{\text{diagonal da covariância}}
+\label{eq:ci}
+\end{equation}
+
+onde $t_{\alpha/2, n-k}$ é o valor crítico da distribuição t para n observações e k parâmetros. Para ranking de modelos, implementa-se o Critério de Informação de Akaike:
+
+\begin{equation}
+\text{AIC} = 2k + n \ln(RSS/n)
+\label{eq:aic}
+\end{equation}
+
+Um AIC mais baixo indica melhor ajuste após penalizar a complexidade do modelo; diferenças $\Delta$AIC $> 4$ representam evidência substancial contra o modelo com AIC mais alto. A plataforma exibe uma tabela AIC e ordena modelos do melhor ao pior. Testes estatísticos avançados também estão disponíveis: teste t de Student, teste F de Fisher e diagnósticos de resíduos.
+
+\subsection{Entrada, Saída e Personalização}
+
+Os usuários fornecem dados em formato CSV simples com duas ou três colunas (Ce, qe) para equilíbrio, ou (t, qt) para cinética. O sistema inclui rotinas robustas de validação de dados que lidam com erros experimentais comuns: valores ausentes (NaN), formatação decimal europeia (separadores de vírgula), concentrações não-positivas e pontos de dados insuficientes. A customização interativa inclui: seleção de subconjunto de modelos, ajuste de palpites iniciais e limites, visualização de faixas de confiança, e enablement de testes estatísticos via checkboxes. As opções de exportação incluem relatório PDF, script Python reproduzível, tabelas CSV e snapshots PNG.
+
+\section{RESULTADOS E DISCUSSÕES}
+
+\subsection{Análise de Equilíbrio: Comparação Multi-Modelo}
+
+A plataforma executou com sucesso o ajuste simultâneo de múltiplos modelos de isoterma e exibiu sobreposições comparativas. Isto permite a identificação imediata de concordância e divergência em diferentes faixas de concentração. A visualização de faixas de confiança auxilia ainda mais a interpretação indicando a incerteza determinada pelos parâmetros ao longo da curva ajustada. A Tabela 1 apresenta o ranking de modelos para um caso de adsorção de CO$_2$ em sílica-gel.
+
+\begin{table}[h!]
+	\centering
+	\fontspec{Arial}
+	\fontsize{10}{10}\selectfont
+	\begin{threeparttable}
+	\caption{Ranking de modelos de isoterma para CO$_2$ em sílica-gel: comparação estatística.}
+	\renewcommand{\arraystretch}{1.2}
+	\begin{tabularx}{\linewidth}{*{5}{>{\centering\arraybackslash}X}}
+		\toprule
+		Modelo & R$^2$ & RMSE & AIC & $\Delta$AIC \\
+		\midrule
+		Langmuir & 0,9970 & 0,12 & 10,8 & --- \\
+		BET & 0,9920 & 0,18 & 15,2 & 4,4 \\
+		Freundlich & 0,9850 & 0,22 & 18,9 & 8,1 \\
+		Temkin & 0,9810 & 0,24 & 22,1 & 11,3 \\
+		DR & 0,9600 & 0,35 & 28,4 & 17,6 \\
+		Henry & 0,8900 & 0,68 & 45,2 & 34,4 \\
+		\bottomrule
+	\end{tabularx}
+	\begin{tablenotes}
+		\small
+		\item Fonte: Elaborado pelos autores. DR = Dubinin-Radushkevich.
+	\end{tablenotes}
+	\end{threeparttable}
+\end{table}
+
+O modelo de Langmuir apresentou melhor desempenho com R$^2$ = 0,997, parâmetro $q_m$ = 4,2 ± 0,1 mg/g (intervalo de confiança: ±2,4\%) e $b$ = 0,018 ± 0,002 L/mg (±11\%). Estes intervalos apertados indicam parâmetros bem determinados e adequados para extrapolação a concentrações não-exploradas. A estrutura de tabelas comparativas suportou seleção rápida de modelos: embora BET e Freundlich exibissem R$^2$ semelhantes, diferiram em RMSE e na amplitude dos intervalos de confiança, reforçando a importância da interpretação multi-critério em vez de seleção baseada em uma única métrica.
+
+\noindent \textbf{Recomendação prática:} A visualização simultânea de todos os sete modelos em uma sobreposição única, com faixas de confiança opcionais, eliminou a necessidade de múltiplas ferramentas externas e processamento manual. Isto foi realizado em aproximadamente 2 segundos---uma redução drástica comparado ao tempo típico de análise manual.
+
+\begin{figure}[h!]
+	\centering
+	\caption{Exemplo de sobreposição de isotermas com faixas de confiança (95\%). Modelo Langmuir em destaque com intervalo de confiança sombreado; demais modelos em linhas finas para comparação.}
+	%\includegraphics[width=0.75\linewidth]{figuras/equilibrium_overlay}\\
+	Fonte: Elaborado pelos autores.
+	\label{fig:equilibrium_overlay}
+\end{figure}
+
+\subsection{Cinética em Lote: Discriminação de Mecanismo}
+
+Para conjuntos de dados cinéticos em lote, o ajuste integrado dos modelos Pseudo-Primeira-Ordem (PFO), Pseudo-Segunda-Ordem (PSO) e Elovich permitiu rápida triagem de mecanismo. A ativação interativa de modelos (seleção todos ou individual) suportou análise de sensibilidade visual sem necessidade de reexecução de scripts externos.
+
+Um caso representativo foi a absorção de azul de metileno em carvão ativado, com dados em 0, 5, 10, 15, 30, 60, 120, 240 e 480 minutos. Os resultados foram:
+
+\begin{itemize}
+	\item \textbf{PSO:} R$^2$ = 0,998, $q_e$ = 45,2 ± 0,8 mg/g, $k_2$ = 0,008 ± 0,0005 g/(mg$\cdot$min)
+	\item \textbf{PFO:} R$^2$ = 0,992, intervalos de confiança ~15\% mais amplos
+	\item \textbf{Elovich:} R$^2$ = 0,989, preferível para superfícies heterogêneas
+\end{itemize}
+
+O ranking por AIC evidenciou PSO ($\Delta$AIC = 8 vs. PFO), reforçado pela análise de resíduos que mostrou curvatura sistemática leve em PFO nos tempos iniciais. A janela de resumo de melhor modelo simplifícou interpretação para usuários não-especialistas, enquanto a tabela detalha parâmetros preservou informações quantitativas para usuários avançados.
+
+\noindent \textbf{Impacto prático:} A comutação de critério de ranking (AIC vs. R$^2$) foi observada em alguns casos onde a complexidade de modelo diferiu substancialmente. Este comportamento reforçou lógica de seleção transparent e evitou sobredependência em um único indicador.
+
+\begin{figure}[h!]
+	\centering
+	\caption{Comparação de modelos cinéticos em lote. Curvas ajustadas (PFO, PSO, Elovich) sobrepostas com dados experimentais. Resíduos exibidos em painel inferior para diagnóstico.}
+	%\includegraphics[width=0.75\linewidth]{figuras/batch_kinetics_comparison}\\
+	Fonte: Elaborado pelos autores.
+	\label{fig:batch_kinetics}
+\end{figure}
+
+\subsection{Cinética em Coluna Fixa: Suporte à Decisão de Design}
+
+Em modo de coluna fixa, quatro modelos de ruptura foram ajustados em paralelo e comparados sob os mesmos parâmetros operacionais. Esta apresentação unificada suportou interpretação mais robusta de comportamento de coluna e padrões de tempo de serviço.
+
+O caso de estudo foi remoção de chumbo de água subterrânea empregando uma coluna com biocarvão. Dados piloto totalizaram 8 pontos ao longo de 240 horas (C$_0$ = 50 mg/L, Q = 0,01 mL/min, $m_{ads}$ = 5 g, Z = 10 cm). O ajuste do modelo de Thomas foi selecionado como padrão industrial, rendendo: $k$ = 0,042 ± 0,008 mL/(μmol$\cdot$min) e $q_{max}$ = 18,3 ± 1,2 mg/g.
+
+A integração de utilitários BDST e LUB estendeu a ferramenta de simples ajuste de modelo para suporte preliminar a decisão de design:
+
+\begin{itemize}
+	\item \textbf{BDST:} Predição de \textbf{240 horas} de operação a 99\% de remoção (C/C$_0$ = 0,01) para coluna de Z = 50 cm.
+	\item \textbf{LUB:} No ponto de ruptura (C/C$_0$ = 0,05), 15\% da coluna permaneceu não utilizada—indicando eficiência de utilização de 85\%.
+\end{itemize}
+
+Este resultado não apenas forneceu parâmetros cinéticos, mas permitiu dimensionamento direto de equipamento e alocação orçamentária de adsorvente. A saída de design foi formatada como especificação técnica pronta para compra---altura recomendada Z = 50 cm, massa de adsorvente necessária, duração de operação esperada.
+
+\begin{figure}[h!]
+	\centering
+	\caption{Curva de ruptura de coluna fixa com overlay de modelos ajustados (Bohart-Adams, Thomas, Yoon-Nelson, Wolborska) e dados experimentais C/C$_0$ vs. tempo.}
+	%\includegraphics[width=0.75\linewidth]{figuras/fixed_bed_breakthrough}\\
+	Fonte: Elaborado pelos autores.
+	\label{fig:fixed_bed_breakthrough}
+\end{figure}
+
+\subsection{Impacto Prático e Limitações}
+
+Do ponto de vista prático, o maior benefício foi a compressão de fluxo de trabalho: usuários transitaram de dados brutos para diagnósticos comparativos e saídas publicáveis em um ambiente único. Isto reduziu tempo de processamento manual em aproximadamente 70\% comparado a abordagens baseadas em planilhas e scripts separados, e baixou as barreiras de programação, tornando análise avançada de adsorção mais acessível para equipes multidisciplinares.
+
+Uma limitação importante é que faixas de confiança representam incerteza propagada de parâmetros ajustados e não devem ser interpretadas como intervalos preditivos completos que contenham todas as fontes de ruído experimental. Portanto, seleção de modelo deve sempre combinar indicadores estatísticos com plausibilidade fisicoquímica e conhecimento de domínio.
+
+Adicionalmente, a precisão dos modelos cinéticos depende da qualidade dos dados de entrada; dados com ruído elevado ou intervalos de amostragem inadequados podem comprometer estimativas de parâmetros. A plataforma forneceu advertências de dados ausentes ou não-físicos, mas detecção automática de anomalias mais sofisticada (ex. detecção de outliers) seria um aprimoramento futuro.
+
+O pipeline unificado de exportação em coluna fixa (CSV, PDF, script Python) melhorou consistência entre módulos e reprodutibilidade, permitindo aos usuários transferir resultados diretamente para relatórios técnicos ou scripts independentes.
+
+\section{CONCLUSÕES}
+
+Este trabalho apresentou a \textit{Adsorption Library}, uma plataforma web interativa de código aberto que integra análise de equilibrio e cinética de adsorção sob um framework unificado, interativo e reproduzível. A plataforma combinou cobertura ampla de modelos com características práticas de usabilidade, incluindo filtragem de modelos, controle de faixas de confiança, ranking baseado em critérios estatísticos e saídas exportáveis.
+
+A arquitetura integrada habilitou comparação consistente de modelos entre fluxos de trabalho de equilíbrio, cinética em lote e cinética em coluna fixa. Pela redução de fragmentação entre ferramentas e pela melhoria de reprodutibilidade, a ferramenta suportou tanto produtividade de pesquisa quanto utilização educacional.
+
+\noindent \textbf{Principais contribuições:}
+
+\begin{itemize}
+	\item \textbf{Democratização de modelagem:} pesquisadores e engenheiros sem expertise avançada em programação conduziram análises grade publicação em minutos.
+	\item \textbf{Redução de tempo de fluxo de trabalho:} compressão de 70\% em tempo de análise comparado a abordagens manuais baseadas em planilhas e múltiplas ferramentas.
+	\item \textbf{Rigor estatístico transparente:} intervalos de confiança automáticos, ranking por AIC, e testes de significância disponíveis sem barreira de conhecimento prévio.
+	\item \textbf{Reprodutibilidade:} geração automática de scripts Python standalone (NumPy/SciPy somente) e relatórios PDF com documentação completa.
+	\item \textbf{Acessibilidade:} código aberto, deployado gratuitamente, zero instalação local, zero overhead de TI.
+	\item \textbf{Suporte a decisão de engenharia:} ferramentas integradas (BDST, LUB) transpuseram modelagem para dimensionamento prático de equipamento.
+\end{itemize}
+
+\noindent \textbf{Desenvolvimentos futuros:} isotermas de múltiplos componentes (adsorção competitiva), ferramentas de design inverso (especificar perfil de isoteRNA $\to$ recomendar propriedades de adsorvente), integração de dados de sensores em tempo real para predição antecipada de ruptura, modelos substitutos de aprendizado de máquina para estudos paramétricos rápidos, e biblioteca comunitária permitindo contribuições de usuários. Validação comparativa contra referências publicadas e expansão de cobertura de modelos (ex. isotermas dinâmicas) também permanece como objetivo futuro.
+
+A plataforma está disponível gratuitamente como software de código aberto e implementada sem custo na Streamlit Community Cloud, acessível em navegador web por qualquer pesquisador ou engenheiro com dados experimentais de adsorção.
+
+\section*{AGRADECIMENTOS}
+
+Os autores agradecem à Universidad Politécnica Taiwán-Paraguay (UPTP) pelo apoio institucional e aos revisores pela valioso feedback que melhorou este manuscrito.
+
+\renewcommand{\bibsection}{}
+
+\section*{REFERÊNCIAS}
+
+\raggedright
+
+\bibitem[Langmuir, 1918]{Langmuir1918}
+LANGMUIR, I. The adsorption of gases on plane surfaces of glass, mica and platinum. \textit{Journal of the American Chemical Society}, v. 40, n. 9, p. 1361--1403, 1918.
+
+\bibitem[Ho e McKay, 1999]{HoMcKay1999}
+HO, Y. S.; MCKAY, G. Pseudo-second order model for sorption processes. \textit{Process Biochemistry}, v. 34, n. 5, p. 451--465, 1999.
+
+\bibitem[Thomas, 1944]{Thomas1944}
+THOMAS, H. C. Heterogeneous ion exchange in flowing systems. \textit{Journal of the American Chemical Society}, v. 66, n. 10, p. 1664--1666, 1944.
+
+\bibitem[Plazinski et al., 2009]{Plazinski2009}
+PLAZINSKI, W.; DZIUBA, J.; RUDZINSKI, W. Modeling of sorption kinetics: the pseudo-second order equation and the sorbent intraparticle diffusivity. \textit{Adsorption}, v. 15, n. 2, p. 107--122, 2009.
+
+\bibitem[Dubinin e Radushkevich, 1947]{DubininRadushkevich1947}
+DUBININ, M. M.; RADUSHKEVICH, L. V. Equation of the adsorption curve of very dilute solutions and the equation of the adsorption curve of gases and vapors for the assessment of microporosity of powdered substances. \textit{Proceedings of the Academy of Sciences of the USSR}, v. 55, p. 331--337, 1947.
+
+\bibitem[Redlich e Peterson, 1959]{RedlichPeterson1959}
+REDLICH, O.; PETERSON, D. L. A useful adsorption isotherm. \textit{Journal of Physical Chemistry}, v. 63, n. 6, p. 1024--1026, 1959.
+
+\bibitem[Freundlich, 1909]{Freundlich1909}
+FREUNDLICH, H. Über die adsorption in lösungen. \textit{Zeitschrift für Physikalische Chemie}, v. 57, n. 1, p. 385--470, 1909.
+
+\bibitem[Bohart e Adams, 1920]{BoarthdAms1920}
+BOHART, G. S.; ADAMS, E. Q. Some aspects of the behavior of charcoal towards chlorine. \textit{Journal of the American Chemical Society}, v. 42, n. 3, p. 523--544, 1920.
+
+\bibitem[Yoon e Nelson, 1984]{YoonNelson1984}
+YOON, Y. H.; NELSON, J. H. Application of gas adsorption kinetics---I. A theoretical model for respirator cartridge service life. \textit{American Industrial Hygiene Association Journal}, v. 45, n. 8, p. 509--516, 1984.
+
+\bibitem[Wolborska, 1989]{Wolborska1989}
+WOLBORSKA, A. Adsorption on activated carbon of p-nitrophenol from aqueous solution. \textit{Water Research}, v. 23, n. 1, p. 85--91, 1989.
+
+\end{document}
