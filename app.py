@@ -2268,6 +2268,7 @@ of time at a given flow rate and bed geometry.
             m_col  = st.number_input("Adsorbent mass (g)", value=5.0, min_value=0.001,
                                      key="fb_m_col")
 
+           
             with st.spinner("Fitting all breakthrough models…"):
                 fb = FixedBedKinetics()
                 ks = KineticsStats()
@@ -2300,13 +2301,68 @@ of time at a given flow rate and bed geometry.
 
             st.divider()
 
-            # Overlay plot of all models
-            st.subheader("Breakthrough curves — all models")
+            # Best model summary using AIC
+            best_model = min(bt_results.items(), key=lambda x: x[1].get('aic', np.inf))[0]
+            best_res = bt_results[best_model]
+
+            st.subheader("Best Model (AIC)")
+            bbc1, bbc2, bbc3 = st.columns(3)
+            bbc1.metric("Model", best_model)
+            bbc2.metric("R²", f"{best_res['r_squared']:.5f}")
+            bbc3.metric("RMSE", f"{best_res['rmse']:.5f}")
+
+            st.divider()
+            st.subheader("Comparison Plot")
+
+            # ── Multi-model overlay selection ─────────────────────────
+            model_names_list = list(bt_results.keys())
+            for mname in model_names_list:
+                st.session_state.setdefault(f"kin_fb_cb_{mname}", True)
+            st.session_state.setdefault("kin_fb_select_all", True)
+
+            def _sync_fb_select_all():
+                state = st.session_state.get("kin_fb_select_all", False)
+                for name in model_names_list:
+                    st.session_state[f"kin_fb_cb_{name}"] = state
+
+            def _sync_fb_individual():
+                st.session_state["kin_fb_select_all"] = all(
+                    st.session_state.get(f"kin_fb_cb_{name}", False)
+                    for name in model_names_list
+                ) if model_names_list else False
+
+            sel_col1, sel_col2 = st.columns([1, 3])
+            with sel_col1:
+                st.checkbox("Select all", key="kin_fb_select_all", on_change=_sync_fb_select_all)
+
+            cb_cols = st.columns(min(len(model_names_list), 3))
+            models_to_plot = []
+            for idx, mname in enumerate(model_names_list):
+                with cb_cols[idx % len(cb_cols)]:
+                    checked = st.checkbox(
+                        mname,
+                        key=f"kin_fb_cb_{mname}",
+                        on_change=_sync_fb_individual
+                    )
+                    if checked:
+                        models_to_plot.append(mname)
+
+            # Overlay plot of selected models
+            st.subheader("Breakthrough curves — selected models")
             t_smooth = np.linspace(t_bt.min(), t_bt.max(), 500)
-            colors   = ['#534AB7', '#1f77b4', '#2ca02c', '#e07b39']
+            colors_map = {
+                "Bohart-Adams": '#534AB7',
+                "Thomas":       '#1f77b4',
+                "Yoon-Nelson":  '#2ca02c',
+                "Wolborska":    '#e07b39'
+            }
             fig_bt   = go.Figure()
 
-            for (name, res), color in zip(bt_results.items(), colors):
+            for name in models_to_plot:
+                if name not in bt_results:
+                    continue
+                res = bt_results[name]
+                color = colors_map.get(name, '#444444')
                 try:
                     if name == "Bohart-Adams":
                         cc_smooth = fb.bohart_adams(
@@ -2325,7 +2381,7 @@ of time at a given flow rate and bed geometry.
                             t_smooth,
                             res['parameters']['kYN'], res['parameters']['tau']
                         )
-                    else:
+                    elif name == "Wolborska":
                         cc_smooth = fb.wolborska(
                             t_smooth,
                             res['parameters']['beta'], res['parameters']['N0'],
@@ -2334,10 +2390,13 @@ of time at a given flow rate and bed geometry.
                     fig_bt.add_trace(go.Scatter(
                         x=t_smooth, y=cc_smooth, mode='lines',
                         line=dict(color=color, width=2),
-                        name=f'{name} fit'
+                        name=f'{name} fit (R²={res["r_squared"]:.4f})'
                     ))
                 except Exception:
                     pass
+
+            if not models_to_plot:
+                st.info("Select at least one model to display on the plot.")
 
             fig_bt.add_trace(go.Scatter(
                 x=t_bt, y=CC0, mode='markers',
