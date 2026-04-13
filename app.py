@@ -1521,11 +1521,18 @@ def page_equilibrium():
                                    file_name="isotherm_fitting.py",
                                    mime="text/plain")
             with dl4:
-                pdf_bytes = generate_pdf_report(
-                    Ce_exp, qe_exp, all_results, Ce_unit, qe_unit)
-                st.download_button("⬇ PDF report", data=pdf_bytes,
-                                   file_name="isotherm_report.pdf",
-                                   mime="application/pdf")
+                try:
+                    pdf_bytes = generate_pdf_report(
+                        Ce_exp, qe_exp, all_results, Ce_unit, qe_unit)
+                    st.download_button("⬇ PDF report", data=pdf_bytes,
+                                       file_name="isotherm_report.pdf",
+                                       mime="application/pdf")
+                except ModuleNotFoundError:
+                    st.download_button("⬇ PDF report", data=b"",
+                                       file_name="isotherm_report.pdf",
+                                       mime="application/pdf",
+                                       disabled=True)
+                    st.caption("Install reportlab to enable PDF export.")
 
     # ── Linearized tab ────────────────────────────────────────────────
     with tab_linearized:
@@ -2025,15 +2032,25 @@ Time in minutes, qt in mg/g, C_bulk in mg/L.
                     mime="text/plain"
                 )
             with dl3:
-                kin_pdf = generate_kinetics_pdf_report(
-                    t_exp, qt_exp, results, alpha=alpha, t_unit=t_unit, q_unit=q_unit
-                )
-                st.download_button(
-                    "⬇ PDF report",
-                    data=kin_pdf,
-                    file_name="batch_reaction_kinetics_report.pdf",
-                    mime="application/pdf"
-                )
+                try:
+                    kin_pdf = generate_kinetics_pdf_report(
+                        t_exp, qt_exp, results, alpha=alpha, t_unit=t_unit, q_unit=q_unit
+                    )
+                    st.download_button(
+                        "⬇ PDF report",
+                        data=kin_pdf,
+                        file_name="batch_reaction_kinetics_report.pdf",
+                        mime="application/pdf"
+                    )
+                except ModuleNotFoundError:
+                    st.download_button(
+                        "⬇ PDF report",
+                        data=b"",
+                        file_name="batch_reaction_kinetics_report.pdf",
+                        mime="application/pdf",
+                        disabled=True
+                    )
+                    st.caption("Install reportlab to enable PDF export.")
 
     # ── Diffusion models tab ──────────────────────────────────────────
     with tab_diffusion:
